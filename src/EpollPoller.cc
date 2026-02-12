@@ -122,6 +122,7 @@ void EpollPoller::removeChannel(Channel *channel)
 {
     LOG_INFO << "fd=" <<  channel->fd() << __FUNCTION__;
     const int fd = channel->fd();
+
     assert(channels_.find(fd)!= channels_.end());
     assert(channels_[fd] == channel);
     assert(channel->isNoneEvent());
@@ -160,13 +161,14 @@ void EpollPoller::update(int operation, Channel *channel)
     memset(&event, 0, sizeof event);
     /*
         为什么要在update里绑定channel和epoll_event?
-        因为update里会调用epoll_ctl，需要epoll_event和对应的fd（channel）
+        fillactiveChannels里用到events_[i].data.ptr来定位channel对象，而这里的event.data.ptr指向channel对象，
     */
     event.data.ptr = channel;   // 指向Channel对象. 用于在回调中定位Channel对象
     event.events = channel->events();   //根据Channel的event来更新其状态
 
     int fd = channel->fd();
-    LOG_INFO << "epoll_ctl op=%d, fd=%d, event=%d" << operation << fd << event.events;
+
+    LOG_INFO << "epoll_ctl op= " << operation << " fd=" << fd << " event=" << channel->events();
 
     if(::epoll_ctl(epollfd_, operation, fd, &event) < 0)
     {

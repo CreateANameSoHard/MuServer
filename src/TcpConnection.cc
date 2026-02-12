@@ -119,6 +119,7 @@ void TcpConnection::handleClose()
 
 void TcpConnection::handleError()
 {
+
   int err = Socket::getSocketError(channel_->fd());
   LOG_ERROR << "TcpConnection::handleError [" << name_ << "] - SO_ERROR = " << err;
 }
@@ -217,7 +218,7 @@ void TcpConnection::connectEstablished()
 
   connectionCallback_(shared_from_this());
 }
-
+// handleClose -> removeConnection -> connectDestroyed
 void TcpConnection::connectDestroyed()
 {
   if(state_ == kConnected)

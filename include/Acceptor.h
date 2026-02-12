@@ -24,7 +24,7 @@ public:
     void listen(); //创建监听队列
 
 private:
-    void handleRead(); //处理新连接 这个其实就是给subReactor执行的pendingFunctor
+    void handleRead(); //处理新连接
 
     EventLoop* loop_; //Acceptor是Reactor的子组件，用的是用户定义的baseloop，即mainReactor
     Socket acceptSocket_; //用于监听新连接的Socket

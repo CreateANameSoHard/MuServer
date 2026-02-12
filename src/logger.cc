@@ -70,7 +70,7 @@ Logger::Impl::Impl(Logger::LogLevel level, int saved_errno, const SourceFile &fi
       stream_() // stream对象的构造函数就是默认的
 {
     std::string tid = std::to_string(CurrentThread::tid());
-    stream_ << T(tid.c_str(), tid.size());
+    stream_ << T(tid.c_str(), tid.size()) << " ";
     stream_ << T(logLevelName[level], 6);
     (void)saved_errno; // 我这里就不写错误的输出了
 }
@@ -114,10 +114,7 @@ Logger::~Logger()
     }
 }
 
-Logger::LogLevel logLevel()
-{
-    return g_loglevel;
-}
+
 
 void Logger::setLogLevel(LogLevel level)
 {

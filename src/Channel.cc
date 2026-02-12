@@ -5,9 +5,9 @@
 #include "../include/EventLoop.h"
 #include "../include/logger.h"
 
- const int kNoneEvent = 0;
- const int kReadEvent = EPOLLIN | EPOLLPRI; // EPOLLPRI is for urgent data
- const int kWriteEvent = EPOLLOUT;
+ const int Channel::kNoneEvent = 0;
+ const int Channel::kReadEvent = EPOLLIN | EPOLLPRI; // EPOLLPRI is for urgent data
+ const int Channel::kWriteEvent = EPOLLOUT;
 
  Channel::Channel(EventLoop* loop, int fd)
      : loop_(loop),

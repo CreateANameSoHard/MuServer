@@ -1,5 +1,5 @@
 CC=g++
-CFLAGS=-Wall
+CFLAGS=-Wall -g
 PFLAGS=-l mymuduo -l pthread -I /usr/include/mymuduo
 .PHONY: clean
 

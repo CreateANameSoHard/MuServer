@@ -1,8 +1,10 @@
 #include <mymuduo/TcpServer.h>
 #include <mymuduo/TcpConnection.h>
 #include <mymuduo/InetAddress.h>
-#include <mymuduo/TimeStamp.h>
+#include <mymuduo/TimeStamp.h>  
 #include <mymuduo/logger.h>
+#include <mymuduo/Channel.h>
+#include <mymuduo/Buffer.h>
 #include <string>
 
 class EchoServer
@@ -14,7 +16,7 @@ public:
     {
         server_.setConnectionCallback(std::bind(&EchoServer::onConnection, this, std::placeholders::_1));
         server_.setMessageCallback(std::bind(&EchoServer::onMessage, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
-        server_.setThreadNum(4);
+        server_.setThreadNum(2);
     }
     void start()
     {

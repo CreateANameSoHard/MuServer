@@ -7,8 +7,6 @@
 #include "TimeStamp.h"
 #include "logstream.h"
 
-// the logger level is set to INFO by default
-// if not define MODE_DEBUG, the LOG_DEBUG macro will be empty
 
 // 这个类只用来提供接口，其他具体的实现是写在内部类里的
 class Logger : noncopyable
@@ -96,6 +94,11 @@ private:
 
 // 全局的日志级别对象。只要包含了这个logger.h头文件，就可以获取日志级别
 extern Logger::LogLevel g_loglevel;
+
+inline Logger::LogLevel Logger::logLevel()
+{
+    return g_loglevel;
+}
 
 // 当向这些宏定义里写日志时，其实就是在向stream对象（缓冲里写日志）
 // 日志输出的宏定义。通过创建临时对象、日志对象销毁的方式写到目标

@@ -166,7 +166,9 @@ void EventLoop::loop()
     while (!quit_)
     {
         activeChannels_.clear();
+
         pollReturnTime_ = poller_->poll(kPollTimeMs, &activeChannels_);
+        
         currentActiveChannel_ = nullptr;
         // 发生了事件
         for (Channel *channel : activeChannels_)

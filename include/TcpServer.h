@@ -7,6 +7,7 @@
 
 #include "Acceptor.h"
 #include "InetAddress.h"
+#include "Channel.h"
 #include "EventloopThreadPool.h"
 #include "Callbacks.h"
 #include "EventLoop.h"
