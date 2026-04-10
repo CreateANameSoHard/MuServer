@@ -30,6 +30,7 @@ EventLoop::EventLoop()
       quit_(false),
       threadId_(CurrentThread::tid()),
       poller_(Poller::newDefaultPoller(this)),
+      timerqueue_(new TimerQueue(this)),
       wakeupFd_(createEventfd()),
       wakeupChannel_(new Channel(this, wakeupFd_)),
       currentActiveChannel_(nullptr),
@@ -45,7 +46,8 @@ EventLoop::EventLoop()
     {
         t_loopInThisThread = this;
     }
-    wakeupChannel_->setReadCallback(std::bind(&EventLoop::handleRead, this)); // evtloop默认就有一个channel(wakeupchannel)，用于线程通信
+    // 用于与poller通信的channel
+    wakeupChannel_->setReadCallback(std::bind(&EventLoop::handleRead, this)); // evtloop默认就有一个channel(wakeupchannel)，用于唤醒poller
     wakeupChannel_->enableReading();
 }
 
@@ -133,7 +135,7 @@ void EventLoop::doPendingFunctors()
     callingPendingFunctors_ = true;
     {
         std::lock_guard<std::mutex> lock(mutex_);
-        functors.swap(pendingFunctors_);
+        functors.swap(pendingFunctors_); // 通过交换容器来减少持有锁的时间
     }
 
     for (const Functor &cb : functors)
@@ -143,20 +145,6 @@ void EventLoop::doPendingFunctors()
     callingPendingFunctors_ = false;
 }
 
-/*
-    muduo当没有实质性的事件发生时，subReactor会因动态超时机制而阻塞（timeout=-1），此时需要wakeup来解除阻塞，执行functors
-    模式1：阻塞模式（timeout = -1）
-    // 当：
-// 1. pendingFunctors_ 为空（没有待处理任务）
-// 2. 没有定时器时，会完全阻塞，直到有IO事件发生
-    模式2：定时模式（timeout = 具体值）
-    // 当有定时器时，poll会等待到最近定时器到期的时间
-// 例如：最近定时器在100ms后触发
-// 则poll会等待最多100ms，然后处理定时器
-    模式3：非阻塞模式（timeout = 0）
-    // 当 pendingFunctors_ 不为空时
-// 立即返回，不等待任何IO事件，直接处理任务队列
-*/
 void EventLoop::loop()
 {
     looping_ = true;
@@ -166,7 +154,7 @@ void EventLoop::loop()
     while (!quit_)
     {
         activeChannels_.clear();
-
+        // 因为线程可能会阻塞在epoll_wait上面，所以通过eventfd的方式来让epoll_wait立刻返回
         pollReturnTime_ = poller_->poll(kPollTimeMs, &activeChannels_);
         
         currentActiveChannel_ = nullptr;
