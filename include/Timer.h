@@ -17,6 +17,7 @@ class Timer : noncopyable
         TimeStamp expiration() const {return expiration_;}
 
         void restart(TimeStamp now);
+
     private:
         TimerCallback callback_;
         const double interval_;

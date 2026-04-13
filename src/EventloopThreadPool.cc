@@ -30,7 +30,7 @@ void EventLoopThreadPool::start(const ThreadInitCallback &cb)
 
         // 这里只是创建了线程，但是还没有启动线程
         threads_.emplace_back(std::unique_ptr<EventLoopThread>(thread));
-        // startLoop()会启动线程，并返回evtloop!!!!!!!!!
+        // startLoop()会启动线程，并返回evtloop的指针
         loops_.push_back(thread->startLoop());
     }
     // 用户没有设置多线程，那就直接用baseloop_执行cb

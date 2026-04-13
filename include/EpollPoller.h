@@ -18,9 +18,9 @@ private:
     void fillActiveChannels(int numEvents, ChannelList* activeChannels) const;  //将epoll_wait返回的事件放入activeChannels中
     void update(int operation, Channel* channel);     //updatechannel的实际调用 Channel.update() -> loop->poller->epollpoller.updateChannel()->update()
 
-    static constexpr int kInitEventListSize = 16;   //初始化events_数组的大小 k开头的变量为const常量
+    static constexpr int kInitEventListSize = 16;   //初始化events_数组的大小16
 
-    using EventList = std::vector<epoll_event>;
+    using EventList = std::vector<epoll_event>; // epoll_event的数组
     int epollfd_;
     EventList events_;  // 用于存放epoll_event元素的数组.因为要考虑到扩容，所以使用vector
 };

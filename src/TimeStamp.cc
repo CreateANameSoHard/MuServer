@@ -1,37 +1,62 @@
-#include<chrono>
-
 #include "../include/TimeStamp.h"
 
-TimeStamp::TimeStamp()
-: microSecondsSinceEpoch_(0)
-{}
 
-TimeStamp::TimeStamp(int64_t microSecondsSinceEpoch)
-: microSecondsSinceEpoch_(microSecondsSinceEpoch)
-{}
+// #include <iostream>
+TimeStamp::TimeStamp()
+    :microsecondsSinceEpoch_(0)
+{
+
+};
+
+TimeStamp::TimeStamp(int64_t microsecondsSinceEpoch)
+    : microsecondsSinceEpoch_(microsecondsSinceEpoch)
+{
+};
 
 TimeStamp TimeStamp::now()
 {
-    //should return the current time in microseconds since epoch
-    auto now = std::chrono::high_resolution_clock::now();
-    auto duration = now.time_since_epoch();
-    return TimeStamp(std::chrono::duration_cast<std::chrono::microseconds>(duration).count());
+    struct timeval tv;
+    // 获取微妙和秒
+    // 在x86-64平台gettimeofday()已不是系统调用,不会陷入内核, 多次调用不会有性能损失.
+    gettimeofday(&tv, NULL);
+    int64_t seconds = tv.tv_sec;
+    // 转换为微妙
+    return TimeStamp(seconds * kMicroSecondsPerSecond + tv.tv_usec);
 }
+
 
 std::string TimeStamp::toString() const
 {
-    time_t raw_time;
-    time(&raw_time);
-    //convert to string
-    struct tm* timeinfo = localtime(&raw_time);
-    char buf[40] = {0};
-    snprintf(buf, sizeof(buf), "%04d-%02d-%02d %02d:%02d:%02d", timeinfo->tm_year + 1900, timeinfo->tm_mon + 1, timeinfo->tm_mday, timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec);
+    char buf[128] = {0};
+    time_t seconds = SecondsSinceEpoch();
+    tm* timeinfo = localtime(&seconds);
+    snprintf(buf, sizeof buf, "%4d/%02d/%02d %02d:%02d:%02d",
+        timeinfo->tm_year + 1900,
+        timeinfo->tm_mon + 1, //月是从0开始的
+        timeinfo->tm_mday,
+        timeinfo->tm_hour,
+        timeinfo->tm_min,
+        timeinfo->tm_sec
+    );
     return buf;
+};
+
+bool TimeStamp::operator<(const TimeStamp& ts)
+{
+    return microsecondsSinceEpoch_ < ts.microsecondsSinceEpoch_;
 }
 
-// int main()
-// {
-//     TimeStamp ts = TimeStamp::now();
-//     std::cout << "TimeStamp: " << ts.toString() << std::endl;
-//     return 0;
-// }
+bool TimeStamp::operator>(const TimeStamp& ts)
+{
+    return microsecondsSinceEpoch_ > ts.microsecondsSinceEpoch_;
+}
+
+bool TimeStamp::operator==(const TimeStamp& ts)
+{
+    return microsecondsSinceEpoch_ == ts.microsecondsSinceEpoch_;
+}
+// 注意输入为秒
+TimeStamp TimeStamp::operator+(const double& seconds)
+{
+    return TimeStamp(microsecondsSinceEpoch_ + seconds * kMicroSecondsPerSecond);
+}

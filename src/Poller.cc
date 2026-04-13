@@ -6,13 +6,9 @@ Poller::Poller(EventLoop* loop)
 {}
 
 Poller::~Poller() = default;
-
+// 返回poller是否含有channel
 bool Poller::hasChannel(Channel* channel) const
 {
     auto it = channels_.find(channel->fd());
     return it != channels_.end() && it->second == channel;
 }
-
-
-// this function should'nt write here. it return a object of poller,but poller is a abstract class.
-// Poller* Poller::newDefaultPoller(EventLoop* loop)

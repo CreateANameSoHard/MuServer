@@ -10,6 +10,7 @@ class EventLoop;
 
 class Acceptor : noncopyable
 {
+    // Acceptor的新连接事件是TcpServer给的
     using NewConnectionCallback = std::function<void(int sockfd, const InetAddress& addr)>;
 public:
     Acceptor(EventLoop* loop, const InetAddress& listenAddr, bool reusePort); //TcpServer的参数为loop,listenAddr，name

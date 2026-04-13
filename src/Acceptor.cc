@@ -25,7 +25,7 @@ Acceptor::Acceptor(EventLoop *loop, const InetAddress &listenAddr, bool reusePor
     acceptSocket_.setReuseAddr(true);
     acceptSocket_.setReusePort(reusePort);
     acceptSocket_.bindAddress(listenAddr);
-    // tcp_server.start()=> acceptor.listen() 当有新事件发生时，Acceptor会执行一个回调（connfd打包成channel，交给subloop）
+    
     acceptChannel_.setReadCallback(std::bind(&Acceptor::handleRead, this)); // 当有新连接到来时，执行handleRead函数
 }
 Acceptor::~Acceptor()
@@ -44,6 +44,7 @@ void Acceptor::listen()
 }
 
 // listenfd有事件发生了，就是有新用户链接了。把链接打包成channel，交给subReactor(具体的回调是由TcpServer提供的，这里只是负责执行)
+// 接收新连接 执行tcpServer给的newConnnectionCB
 void Acceptor::handleRead()
 {
     InetAddress peeraddr;

@@ -1,6 +1,6 @@
 #pragma once
 
-//this class is used to make a class noncopyable
+// 隐藏构造函数 让noncopyable只能通过继承来构造 且不能拷贝 
 class noncopyable
 {
 

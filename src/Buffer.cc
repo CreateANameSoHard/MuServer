@@ -4,8 +4,11 @@
 #include "../include/Buffer.h"
 #include "../include/logger.h"
 
+const char Buffer::kCRLF[] = "\r\n";
+
 // 从文件描述符中读数据。
 // 读数据到缓冲区有一个问题。 我们不知道用户的数据有多少，所以不能直接分配缓冲大小
+//总结：用一个额外的缓冲区来读。根据读到的长度来判断是否需要对buffer扩容
 ssize_t Buffer::readFd(int fd, int* savedErrno)
 {
     char extrabuf[65536] = {0};

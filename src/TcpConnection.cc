@@ -23,6 +23,7 @@ TcpConnection::TcpConnection(EventLoop *loop,
       peerAddr_(peerAddr),
       highWaterMark_(64 * 1024 * 1024) // 高水位为64MB
 {
+  // 把处理方法全部绑到channel上
   channel_->setReadCallback(
       std::bind(&TcpConnection::handleRead, this, std::placeholders::_1));
   channel_->setWriteCallback(
@@ -124,6 +125,22 @@ void TcpConnection::handleError()
   LOG_ERROR << "TcpConnection::handleError [" << name_ << "] - SO_ERROR = " << err;
 }
 
+void TcpConnection::send(Buffer* buffer)
+{
+  if(state_ == kConnected)
+  {
+    if(loop_->isInLoopThread())
+    {
+      sendInLoop(buffer->peek(), buffer->readableBytes());
+      buffer->retrieveAll();
+    }
+    else
+    {
+      loop_->runInLoop(std::bind(&TcpConnection::sendInLoop, this, buffer->peek(), buffer->readableBytes()));
+    }
+  }
+}
+
 void TcpConnection::send(const std::string &buf)
 {
   if (state_ == kConnected)
@@ -181,22 +198,20 @@ void TcpConnection::sendInLoop(const void *data, size_t len)
   {
     // 残留的数据有两部分：outputbuffer和remaining
     size_t oldLen = outputBuffer_.readableBytes();
-    if (oldLen + remaining >= highWaterMark_  // 添加新数据后，总数据量将达到或超过高水位
-      && oldLen < highWaterMark_ // 这个条件确保高水位回调只触发一次
-      && highWaterCallback_
-    )
+    if (oldLen + remaining >= highWaterMark_ // 添加新数据后，总数据量将达到或超过高水位
+        && oldLen < highWaterMark_           // 这个条件确保高水位回调只触发一次
+        && highWaterCallback_)
     {
-      loop_->queueInLoop(std::bind(highWaterCallback_,  shared_from_this(), oldLen + remaining));
+      loop_->queueInLoop(std::bind(highWaterCallback_, shared_from_this(), oldLen + remaining));
     }
 
-    outputBuffer_.append(static_cast<const char*>(data) + nwrote, remaining);
+    outputBuffer_.append(static_cast<const char *>(data) + nwrote, remaining);
 
-    if(!channel_->isWriting())
+    if (!channel_->isWriting())
     {
-      channel_->enableReading(); // 这里要注册channel的写事件
+      channel_->enableReading(); // 这里要注册channel的写事件 后续的发送让handleWrite来发
     }
   }
-
 }
 
 /*
@@ -204,7 +219,6 @@ void TcpConnection::sendInLoop(const void *data, size_t len)
   如果一个对象依赖另一个对象的回调（或者其他某种资源），可以像muduo一样，把对象通过弱引用指针绑在一起。
   如果如果被依赖对象被删掉了，那么就不执行相关的回调
 */
-// 这个函数是给TcpServer回调用的
 void TcpConnection::connectEstablished()
 {
   // TcpConnection初始化为kConnecting，这里因为链接建立了，所以要设为connected
@@ -213,22 +227,20 @@ void TcpConnection::connectEstablished()
   // share_ptr<Concrete>可以转为share_ptr<void>就像其他类型指针可以转为void*一样
   channel_->tie(shared_from_this());
 
-
-  channel_->enableReading(); // 这里就启动了channel的epollin的事件监听
-
+  channel_->enableReading(); 
   connectionCallback_(shared_from_this());
 }
 // handleClose -> removeConnection -> connectDestroyed
 void TcpConnection::connectDestroyed()
 {
-  if(state_ == kConnected)
+  if (state_ == kConnected)
   {
     // 把channel从epoll里删掉
     setStates(kDisconnected);
     channel_->disableAll(); // 关闭channel，从epoll中删除
     connectionCallback_(shared_from_this());
   }
-  // 
+
   channel_->remove();
 }
 
@@ -245,9 +257,9 @@ void TcpConnection::connectDestroyed()
 */
 void TcpConnection::shutdown()
 {
-  if(state_ == kConnected)
+  if (state_ == kConnected)
   {
-    // 注意这里是disconnecting!因为shutdown是提供给用户的，用户在调用shutdown时，可能在调用send（或者handleWrite）
+    // 注意这里是disconnecting!
     setStates(kDisconnecting);
     loop_->runInLoop(std::bind(&TcpConnection::shutdownInLoop, this));
   }
@@ -256,8 +268,9 @@ void TcpConnection::shutdown()
 void TcpConnection::shutdownInLoop()
 {
   // 只有在写完后才能关闭channel
-  if(!channel_->isWriting())
+  if (!channel_->isWriting())
   {
+    //本端写关闭 即发送fin，进入半关闭状态
     socket_->shutdownWrite();
   }
 }

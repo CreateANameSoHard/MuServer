@@ -2,8 +2,8 @@
 
 Timer::Timer(TimerCallback cb, TimeStamp when, double interval)
     :callback_(std::move(cb)),
-    expiration_(when),
     interval_(interval),
+    expiration_(when),
     repeated_(interval > 0.0)
 {
 

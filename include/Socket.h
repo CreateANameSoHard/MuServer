@@ -27,7 +27,7 @@ public:
     void setReusePort(bool on);
     // 关闭或开启keep-alive
     void setKeepAlive(bool on);
-
+    //调用getsockopt的SO_SOCKERR
     static int getSocketError(int sockfd);
 
     int fd() const { return sockfd_; }

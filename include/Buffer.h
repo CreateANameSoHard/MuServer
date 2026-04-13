@@ -33,7 +33,7 @@ public:
     ~Buffer() = default;
 
     size_t readableBytes() const { return writerIndex_ - readerIndex_; }
-    size_t writableBytes() const { return buffer_.size() - writerIndex_; }
+    size_t writableBytes() const { return buffer_.size() - writerIndex_; } 
     size_t prependableBytes() const { return readerIndex_; }
     const char *peek() const { return begin() + readerIndex_; } // 获取缓冲区的读起始地址
     void retrieve(size_t len)
@@ -63,7 +63,7 @@ public:
         retrieve(len);
         return result;
     }
-    // 调用者接下来需要写入的数据长度
+    // 调用接下来需要写入的数据长度
     void ensureWritableBytes(size_t len)
     {
         // 接收的数据可能会大于现有的writeableBytes，所以需要考虑到扩容的问题
@@ -73,6 +73,10 @@ public:
             makeSpace(len);
         }
         assert(writableBytes() >= len);
+    }
+    void append(const std::string& str)
+    {
+        append(str.c_str(), str.size());
     }
 
     void append(const void* data, size_t len)
@@ -91,6 +95,17 @@ public:
     ssize_t readFd(int fd, int *savedErrno);
     // ssize_t writeFd(int fd, int *savedErrno);
 
+    const char* findCRLF() const
+    {
+        const char* crlf = std::search(peek(), beginWrite(), kCRLF, kCRLF + 2);
+        return crlf ? crlf:nullptr;
+    }
+    const char* findCRLF(const char* start) const 
+    {
+        const char* crlf = std::search(start, beginWrite(), kCRLF, kCRLF+2);
+        return crlf ? crlf:nullptr;
+    }
+
 private:
     void makeSpace(size_t len)
     {
@@ -98,6 +113,7 @@ private:
         {
             buffer_.resize(writerIndex_ + len);
         }
+        // 优化指针位置
         else
         {
             size_t readable = readableBytes();
@@ -117,4 +133,6 @@ private:
     std::vector<char> buffer_; // 缓冲区 每个元素是一个字符
     size_t readerIndex_;       // 读指针
     size_t writerIndex_;       // 写指针
+
+    static const char kCRLF[];
 };

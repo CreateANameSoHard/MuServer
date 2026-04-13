@@ -6,8 +6,8 @@
 #include "../include/logger.h"
 
  const int Channel::kNoneEvent = 0;
- const int Channel::kReadEvent = EPOLLIN | EPOLLPRI; // EPOLLPRI is for urgent data
- const int Channel::kWriteEvent = EPOLLOUT;
+ const int Channel::kReadEvent = EPOLLIN | EPOLLPRI; // 读事件
+ const int Channel::kWriteEvent = EPOLLOUT; // 写事件
 
  Channel::Channel(EventLoop* loop, int fd)
      : loop_(loop),
@@ -22,13 +22,7 @@
 
 Channel::~Channel()
 {
-    // assert(!eventHandling_);
-    // assert(!addedToLoop_);
-    // // whehter the channel belongs to this loop and in this thread  
-    // if (loop_->IsInLoopThread())
-    // {
-    //     assert(!loop_->hasChannel(this));
-    // }
+    // channel没有创建资源 所以析构是不用做什么事的
 }
 
 //用于防止对象在事件处理期间被意外销毁 
@@ -39,20 +33,20 @@ void Channel::tie(const std::shared_ptr<void>& obj)
     tie_ = obj;
 }
 
-// call poller to update channel by loop object
+// channel通过eventloop，调用poller的update
 void Channel::update()
 {
     addedToLoop_ = true;
     loop_->updateChannel(this); //call poller to update channel
 }
 
-// call poller to remove channel by loop object
+// channel通过eventloop，调用poller的remove
 void Channel::remove()
 {
     addedToLoop_ = false;
     loop_->removeChannel(this); //call poller to remove channel
 }    
-
+// 处理事件的入口 这里加了安全判定
 void Channel::handleEvent(TimeStamp receivedTime)
 {
     std::shared_ptr<void> guard;
@@ -70,7 +64,7 @@ void Channel::handleEvent(TimeStamp receivedTime)
         handleEventWithGuard(receivedTime);
     }
 }
-
+// 实际的处理事件方法 根据revent的类型来调用对应回调
 void Channel::handleEventWithGuard(TimeStamp receivedTime)
 {
     LOG_INFO << "channel received event:" << revents_;

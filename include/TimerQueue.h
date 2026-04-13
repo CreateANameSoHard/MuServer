@@ -1,6 +1,7 @@
 #pragma once
 #include <set>
 #include <functional>
+#include <vector>
 
 #include "TimeStamp.h"
 #include "noncopyable.h"
@@ -29,7 +30,7 @@ class TimerQueue : noncopyable
         //这个reset是对timers_容器reset
         void reset(const std::vector<Entry>& expired, TimeStamp now); // 重置TimerQueue 遍历expired列表，如果是持续定时器 则重新定时并插入timers,否则删除 然后重设timerfd
 
-        std::vector<Entry> getExpired(TimeStamp now); // 获取全部超时的定时器 并在timers_列表里删除
+        std::vector<Entry> getExpired(TimeStamp); // 获取全部超时的定时器 并在timers_列表里删除
 
         bool insert(Timer* timer); //将定时器插入到timers_里，返回是否改变了最近超时时间
 

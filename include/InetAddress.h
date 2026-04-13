@@ -10,7 +10,7 @@ class InetAddress:copyable
 {
 public:
    explicit InetAddress(uint16_t port = 8080,std::string ip = "127.0.0.1");
-   explicit InetAddress(const struct sockaddr_in& addr)
+   explicit InetAddress(const struct sockaddr_in& addr) //输入参数尽量用const左值引用
    :addr_(addr)
    {}
 

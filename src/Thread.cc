@@ -12,7 +12,7 @@ std::atomic_int Thread::numCreated_(0);
 Thread::Thread(ThreadFunc func, const std::string &name)
     : started_(false),
       joined_(false),
-      func_(std::move(func)),
+      func_(std::move(func)), // 实际的func可能很大 用移动语义优化性能
       tid_(0),
       name_(name)
 {
@@ -40,7 +40,7 @@ void Thread::start()
         sem_post(&sem);
         func_();
     });
-    sem_wait(&sem);
+    sem_wait(&sem); //如果信号量为0 则线程会阻塞 直至sem_post
     // sem_destroy(&sem);
 }
 

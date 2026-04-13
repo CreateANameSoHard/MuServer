@@ -12,12 +12,13 @@ EventLoopThread::EventLoopThread(const ThreadInitCallback &cb, const std::string
       initCallback_(cb)
 {
 }
+
 EventLoopThread::~EventLoopThread()
 {
     exiting_ = true;
     if (loop_ != nullptr)
     {
-        loop_->quit();
+        loop_->quit(); // 先退出循环 再退线程
         thread_.join(); // 等待线程退出
     }
 }
@@ -37,7 +38,7 @@ EventLoop *EventLoopThread::startLoop()
     loop = loop_;
     return loop;
 }
-
+// eventloop是在线程的栈上创建的！
 void EventLoopThread::threadFunc()
 {
     EventLoop loop; // 创建一个eventloop
@@ -45,6 +46,7 @@ void EventLoopThread::threadFunc()
     {
         initCallback_(&loop); // 执行回调函数
     }
+    // 要等到eventloop初始化完毕
     {
         std::lock_guard<std::mutex> lock(mutex_);
         loop_ = &loop;

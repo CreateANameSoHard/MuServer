@@ -28,6 +28,7 @@ void Socket::bindAddress(const InetAddress &addr)
         LOG_FATAL << "Socket::bindAddress";
     }
 }
+// 开启监听队列
 void Socket::listen()
 {
     // 源码写的是listenOrDie函数

@@ -4,6 +4,7 @@
 #include <string>
 
 #include "noncopyable.h"
+#include "Any.h"
 #include "InetAddress.h"
 #include "Callbacks.h"
 #include "Buffer.h"
@@ -14,8 +15,7 @@ class EventLoop;
 class Socket;
 
 // 这个对象就是在mainReactor和subReactor直接传递的对象。封装了socket和channel
-// 代表着已经建立链接的一条链路
-// 各种回调的传递为：用户->Acceptor->TcpServer->封装为TcpConnection->通过Functor传递给subReactor->把Tcpconnection上的回调交给channel 然后poll
+// 代表着已经建立链接的一条链路 channel和对端就是通过connection传递消息的
 
 class TcpConnection : noncopyable,
                       public std::enable_shared_from_this<TcpConnection>
@@ -48,7 +48,11 @@ public:
     void connectEstablished(); // 连接建立
     void connectDestroyed();   // 连接销毁
 
-    
+    const Any& getContext() const { return context_;}
+    Any& getMutableContext() { return context_; }
+    //触发拷贝 临时对象是ok的
+    void setContext(const Any& context) { context_ = std::move(context); }
+
 
     void setConnectionCallback(const ConnectionCallback &cb)
     {
@@ -89,15 +93,17 @@ private:
     const std::string name_;
     std::atomic_int state_; // 状态变量
 
+    Any context_; //Tcp链接的上下文 指向上层协议 这里仅用于指向httpContext
+
     bool reading_; // 是否正在读
 
     std::unique_ptr<Socket> socket_;   // 封装的socket对象
-    std::unique_ptr<Channel> channel_; // 封装的channel对象
+    std::unique_ptr<Channel> channel_; // 封装的channel对象 通过这个对象把相关的事件处理交给对应的loop
 
     const InetAddress localAddr_; // 本端地址
     const InetAddress peerAddr_;  // 对端地址
 
-    ConnectionCallback connectionCallback_;       // 连接回调
+    ConnectionCallback connectionCallback_;       // 连接回调 成功会回调 失败也会回调
     MessageCallback messageCallback_;             // 消息回调
     WriteCompleteCallback writeCompleteCallback_; // 写完成回调
     CloseCallback closeCallback_;                 // 关闭回调

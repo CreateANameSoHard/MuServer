@@ -82,6 +82,7 @@ private:
     public:
         Impl(LogLevel level, int old_errno, const SourceFile &file, int line);
         void finish(); // 输出日志末尾的内容：-时间 .log
+        void formatTime();
 
         TimeStamp time_;
         SourceFile basename_;
@@ -93,12 +94,14 @@ private:
 };
 
 // 全局的日志级别对象。只要包含了这个logger.h头文件，就可以获取日志级别
+//g_loglevel的定义是在logger.cc里
 extern Logger::LogLevel g_loglevel;
 
 inline Logger::LogLevel Logger::logLevel()
 {
     return g_loglevel;
 }
+const char* getErrnoMsg(int savedErrno);
 
 // 当向这些宏定义里写日志时，其实就是在向stream对象（缓冲里写日志）
 // 日志输出的宏定义。通过创建临时对象、日志对象销毁的方式写到目标

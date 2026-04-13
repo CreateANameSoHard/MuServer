@@ -4,7 +4,7 @@
 
 namespace CurrentThread 
 {
-    // 跨文件的 TLS 变量共享
+    // 跨文件的 TLS 变量共享 即头文件的t_cachedTid是.cc文件的变量 其他文件只需要包含头文件 就能获取tid了
     // 线程局部存储变量，每个线程都有自己的一份拷贝，互不干扰
     extern thread_local int t_cachedTid;
     void cacheTid();

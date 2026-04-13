@@ -10,10 +10,11 @@
 #include "Thread.h"
 
 class EventLoop;
-
+//把eventloop放到一个线程上 合成一个具体的组件
 class EventLoopThread :noncopyable
 {
-    using ThreadInitCallback = std::function<void(EventLoop*)>; //这里的ThreadInitCallback是类型！!所以Callback()是一个右值对象（默认的空对象）
+    // 线程在start前可能会有初始化的动作 
+    using ThreadInitCallback = std::function<void(EventLoop*)>; 
 public:
     EventLoopThread(const ThreadInitCallback& cb = ThreadInitCallback(),const std::string& name = std::string());   //右值可以赋值给const的左值引用！！
     ~EventLoopThread();
@@ -25,7 +26,7 @@ private:
     Thread thread_;
     EventLoop* loop_;
     std::mutex mutex_;
-    std::condition_variable cond_;
+    std::condition_variable cond_; // startloop和threadFunc有同步关系 因为startloop要等待threadFunc的loop的初始化，返回线程栈上的loop指针
     bool exiting_;
     // 用于线程在创建前的初始化
     ThreadInitCallback initCallback_;   //这里的initCallback_是一个函数对象！！只不过没有被赋值初始化

@@ -25,9 +25,9 @@ int CreateTimerfdOrDie()
 TimerQueue::TimerQueue(EventLoop* loop)
     : loop_(loop),
     timer_fd_(CreateTimerfdOrDie()),
-    callingExpiredTimers(false),
     timerChannel_(loop, timer_fd_),
-    timers_()
+    timers_(),
+    callingExpiredTimers(false)
 {
     // 在timer和poller之间建立channel
     timerChannel_.setReadCallback(std::bind(&TimerQueue::handleRead, this));
@@ -106,7 +106,7 @@ bool TimerQueue::insert(Timer* timer)
     return eariestchanged;
 }
 //timers集合里超时时间最短的定时器改了，所以要重新设置一下timerfd，通过timerfd_settime调用来完成
-void resetTimerFd(int timer_fd, TimeStamp expiration)
+void TimerQueue::resetTimerFd(int timer_fd, TimeStamp expiration)
 {
     itimerspec new_value;
     itimerspec old_value;

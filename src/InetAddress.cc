@@ -12,7 +12,7 @@ InetAddress::InetAddress(uint16_t port, std::string ip)
 std::string InetAddress::toIp() const
 {
     char buf[INET_ADDRSTRLEN];
-    //avoid namespace confilct add ::
+    //调用全局
     ::inet_ntop(AF_INET, &addr_.sin_addr, buf, sizeof buf);
     return buf;
 }
@@ -30,13 +30,3 @@ uint16_t InetAddress::toPort() const
 {
     return ntohs(addr_.sin_port);
 }
-
-// int main()
-// {
-//     InetAddress addr(8080, "123.255.255.10");
-
-//     std::cout << addr.toIpPort() << std::endl;
-//     std::cout << addr.toPort() << std::endl;
-//     std:: cout << addr.toIp() << std::endl;
-//     return 0;
-// }

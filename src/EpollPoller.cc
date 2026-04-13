@@ -40,10 +40,14 @@ TimeStamp EpollPoller::poll(int timeoutMs/*超时时间*/, ChannelList *activeCh
     int numEvents = ::epoll_wait(epollfd_, &*events_.begin(), static_cast<int>(events_.size()), timeoutMs);
     int savedErrno = errno; //errno是thread_local的 saveErrno保存的是epoll_wait执行完后的errno，为的是用LOG_ERROR输出epoll_wait错误原因
     TimeStamp now(TimeStamp::now());    //epoll_wait执行完后立马记录时间
+
+    // 返回的事件数大于0
     if (numEvents > 0)
     {
         LOG_INFO << "function=" << __FUNCTION__ << numEvents;
-        fillActiveChannels(numEvents, activeChannels);
+        fillActiveChannels(numEvents, activeChannels); // 把事件通过传入的指针返回过去
+
+        //扩容
         if(numEvents == static_cast<int>(events_.size()))   //size()的返回值是size_t类型，可能会溢出
             events_.resize(events_.size() * 2);
     }

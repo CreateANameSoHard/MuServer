@@ -5,7 +5,9 @@
 #include "../include/TcpServer.h"
 #include "../include/logger.h"
 #include "../include/TcpConnection.h"
+#include "../include/EventLoop.h"
 
+// tcpServer的loop是应用程序给的
 TcpServer::TcpServer(EventLoop *loop, const InetAddress &listenAddr, const std::string &nameArg, TcpServer::Option option)
     : loop_(CHECK_NOT_NULL(loop)),
       ipPort_(listenAddr.toIpPort()),
@@ -31,7 +33,8 @@ TcpServer::~TcpServer()
         TcpConnectionPtr conn(item.second);
         item.second.reset();
 
-        conn->getLoop()->runInLoop(std::bind(&TcpConnection::connectDestroyed, conn));
+        conn->getLoop()->runInLoop(std::bind(&TcpConnection::connectDestroyed, conn)); //被动关闭
+        
     }
 }
 
@@ -67,6 +70,7 @@ void TcpServer::newConnection(int sockfd, const InetAddress &addr)
 
     sockaddr_in localaddr;
     socklen_t addrlen = sizeof localaddr;
+    //获取本地ip
     if(::getsockname(sockfd, (sockaddr*)&localaddr, &addrlen) < 0)
     {
         LOG_ERROR << "getsockname error";
