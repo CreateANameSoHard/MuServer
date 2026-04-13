@@ -9,16 +9,16 @@ void HttpServer::start()
     server_.start();
 }
 
-void DefaultCallback(const HttpRequest &req, HttpResponse *rep)
-{
-    rep->setStatusCode(HttpResponse::HttpStateCode::k404NotFound);
-    rep->setStatusMessage("Not Found");
-    rep->setCloseConnection(true);
-}
+// void DefaultCallback(const HttpRequest &req, HttpResponse *rep)
+// {
+//     rep->setStatusCode(HttpResponse::HttpStateCode::k404NotFound);
+//     rep->setStatusMessage("Not Found");
+//     rep->setCloseConnection(true);
+// }
 
 HttpServer::HttpServer(EventLoop *loop, const InetAddress &listenAddr, const std::string &nameArg, TcpServer::Option option)
     : server_(loop, listenAddr, nameArg, option),
-      callback_(DefaultCallback)
+      router_()
 {
     server_.setConnectionCallback(std::bind(&HttpServer::onConnection, this ,std::placeholders::_1));
     server_.setMessageCallback(std::bind(&HttpServer::onMessage, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
@@ -56,8 +56,8 @@ void HttpServer::onRequest(const TcpConnectionPtr& conn, const HttpRequest& requ
     HttpResponse resp(close);
 
     LOG_INFO << "calling httpcallback ";
-    
-        callback_(request, &resp); // 用户提供的回调 
+        // callback_(request, &resp); // 用户提供的回调 
+    router_.handleRequest(request, &resp);
 
     Buffer buffer;
     resp.appendToBuffer(&buffer);
