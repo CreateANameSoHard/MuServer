@@ -1,3 +1,6 @@
+#include <unistd.h>
+#include <fcntl.h>
+
 #include "../include/Router.h"
 #include "../include/logger.h"
 
@@ -43,4 +46,11 @@ void Router::handleRequest(const HttpRequest &req, HttpResponse *rep)
         rep->setStatusMessage("Not Found");
         rep->setCloseConnection(true);
     }
+}
+
+
+void Router::handleFile(const StaticFile& file, const HttpRequest& req, HttpResponse* rep)
+{
+        rep->setContentType(file.getTypeString());
+        rep->enableStaticFile(file);
 }

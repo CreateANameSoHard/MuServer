@@ -1,12 +1,11 @@
 #include <functional>
 #include <errno.h>
-#include <unistd.h>
 
 #include "../include/TcpConnection.h"
-#include "../include/logger.h"
 #include "../include/Socket.h"
 #include "../include/Channel.h"
 #include "../include/EventLoop.h"
+
 
 TcpConnection::TcpConnection(EventLoop *loop,
                              const std::string &name,
@@ -21,7 +20,9 @@ TcpConnection::TcpConnection(EventLoop *loop,
       channel_(new Channel(loop, sockfd)),
       localAddr_(localAddr),
       peerAddr_(peerAddr),
-      highWaterMark_(64 * 1024 * 1024) // 高水位为64MB
+      highWaterMark_(64 * 1024 * 1024), // 高水位为64MB
+      totalPendingBytes_(0),
+      highWaterMarkTriggered_(false)
 {
   // 把处理方法全部绑到channel上
   channel_->setReadCallback(
@@ -66,44 +67,6 @@ void TcpConnection::handleRead(TimeStamp receiveTime)
     handleError();
   }
 }
-// 正常情况下我们其实根本不需要给epoll注册写事件。但当内核不能及时发送数据时，就需要向epoll注册写事件，让它及时通知我们
-void TcpConnection::handleWrite()
-{
-  // 用户是否注册可写事件
-  if (channel_->isWriting())
-  {
-    // readable的部分是用来发送的 把output缓冲区的数据发送出去
-    ssize_t n = ::write(channel_->fd(), outputBuffer_.peek(), outputBuffer_.readableBytes());
-    if (n > 0)
-    {
-      outputBuffer_.retrieve(n);
-      // 发送完毕
-      if (outputBuffer_.readableBytes() == 0)
-      {
-        // 防止在没有数据可写时，epoll持续返回可写事件 只在真正需要时监听写事件
-        // 会在发送数据(send)中开启对写事件的监听
-        channel_->disableWriting();
-        if (writeCompleteCallback_)
-        {
-          loop_->queueInLoop(
-              std::bind(&TcpConnection::writeCompleteCallback_, shared_from_this()));
-        }
-        if (state_ == kDisconnecting)
-        {
-          shutdownInLoop();
-        }
-      }
-    }
-    else
-    {
-      LOG_ERROR << "TcpConnection::handleWrite write error";
-    }
-  }
-  else
-  {
-    LOG_TRACE << "fd = " << channel_->fd() << " TcpConnection::handleWrite channel not writing";
-  }
-}
 
 void TcpConnection::handleClose()
 {
@@ -125,91 +88,22 @@ void TcpConnection::handleError()
   LOG_ERROR << "TcpConnection::handleError [" << name_ << "] - SO_ERROR = " << err;
 }
 
-void TcpConnection::send(Buffer* buffer)
+void TcpConnection::send(Buffer *buffer)
 {
-  if(state_ == kConnected)
+  if (state_ == kConnected)
   {
-    if(loop_->isInLoopThread())
+    if (loop_->isInLoopThread())
     {
       sendInLoop(buffer->peek(), buffer->readableBytes());
       buffer->retrieveAll();
     }
     else
     {
-      loop_->runInLoop(std::bind(&TcpConnection::sendInLoop, this, buffer->peek(), buffer->readableBytes()));
-    }
-  }
-}
-
-void TcpConnection::send(const std::string &buf)
-{
-  if (state_ == kConnected)
-  {
-    if (loop_->isInLoopThread())
-    {
-      sendInLoop(buf.c_str(), buf.size());
-    }
-    else
-    {
-      loop_->runInLoop(std::bind(&TcpConnection::sendInLoop, this, buf.c_str(), buf.size()));
-    }
-  }
-}
-// 需要协调应用和内核的数据发送速度
-void TcpConnection::sendInLoop(const void *data, size_t len)
-{
-  int nwrote = 0;
-  int remaining = len;
-  bool faultError = false;
-  if (state_ == kDisconnected)
-  {
-    LOG_WARN << "disconnected, give up writing";
-    return;
-  }
-  // epoll没有注册写事件，则直接发送给对端 因为此时缓冲区是空的，没有必要向epoll注册
-  if (!channel_->isWriting() && outputBuffer_.readableBytes() == 0)
-  {
-    nwrote = ::write(channel_->fd(), data, len);
-    if (nwrote >= 0)
-    {
-      remaining = len - nwrote;
-      if (remaining == 0 && writeCompleteCallback_)
-      {
-        loop_->queueInLoop(std::bind(&TcpConnection::writeCompleteCallback_, shared_from_this()));
-      }
-    }
-    else
-    {
-      nwrote = 0;
-      if (errno != EWOULDBLOCK)
-      {
-        LOG_ERROR << "TcpConnection::sendInLoop write error";
-        // 出错，关闭连接
-        if (errno == EPIPE || errno == ECONNRESET)
-        {
-          faultError = true;
-        }
-      }
-    }
-  }
-  // 没有把全部数据都发出去，说明内核的缓冲区可能没空间了，此时就需要暂存output缓冲区，给epoll注册写事件，让它来通知我们
-  // 给epoll注册的写回调也就是handlewrite，这个函数的作用就是把outputbuffer的内容发出去 当内核可以发数据时，就会把剩余的内容发出去
-  if (!faultError && remaining > 0)
-  {
-    // 残留的数据有两部分：outputbuffer和remaining
-    size_t oldLen = outputBuffer_.readableBytes();
-    if (oldLen + remaining >= highWaterMark_ // 添加新数据后，总数据量将达到或超过高水位
-        && oldLen < highWaterMark_           // 这个条件确保高水位回调只触发一次
-        && highWaterCallback_)
-    {
-      loop_->queueInLoop(std::bind(highWaterCallback_, shared_from_this(), oldLen + remaining));
-    }
-
-    outputBuffer_.append(static_cast<const char *>(data) + nwrote, remaining);
-
-    if (!channel_->isWriting())
-    {
-      channel_->enableReading(); // 这里要注册channel的写事件 后续的发送让handleWrite来发
+      std::string copy(buffer->peek(), buffer->readableBytes());
+      buffer->retrieveAll();
+      // 拷贝
+      loop_->runInLoop([this, copy]()
+                       { sendInLoop(copy.data(), copy.size()); });
     }
   }
 }
@@ -227,7 +121,7 @@ void TcpConnection::connectEstablished()
   // share_ptr<Concrete>可以转为share_ptr<void>就像其他类型指针可以转为void*一样
   channel_->tie(shared_from_this());
 
-  channel_->enableReading(); 
+  channel_->enableReading();
   connectionCallback_(shared_from_this());
 }
 // handleClose -> removeConnection -> connectDestroyed
@@ -270,7 +164,123 @@ void TcpConnection::shutdownInLoop()
   // 只有在写完后才能关闭channel
   if (!channel_->isWriting())
   {
-    //本端写关闭 即发送fin，进入半关闭状态
+    // 本端写关闭 即发送fin，进入半关闭状态
     socket_->shutdownWrite();
+  }
+}
+
+void TcpConnection::sendFile(const StaticFile& file)
+{
+  if (state_ == kConnected)
+  {
+    if (loop_->isInLoopThread())
+    {
+      sendFileInLoop(file);//FIXME:copy?
+    }
+    else
+    {
+      loop_->runInLoop([this, file]()
+                       { sendFileInLoop(file); });
+    }
+  }
+}
+
+void TcpConnection::sendFileInLoop(const StaticFile& file)
+{
+  assert(loop_->isInLoopThread());
+
+  std::unique_ptr<TcpConnection::Context> filectx(new TcpConnection::FileContext(file));
+  contextQueue_.emplace_back(std::move(filectx));
+  totalPendingBytes_ += file.getFileSize();
+  doWriting();
+}
+
+void TcpConnection::send(const std::string &buf)
+{
+  if (state_ == kConnected)
+  { 
+    // send(const std::string&)
+    if (loop_->isInLoopThread())
+    {
+      sendInLoop(buf.c_str(), buf.size());
+    }
+    else
+    {
+      loop_->runInLoop([this, buf]()
+                       { sendInLoop(buf.c_str(), buf.size()); });
+    }
+  }
+}
+// 需要协调应用和内核的数据发送速度
+void TcpConnection::sendInLoop(const void *data, size_t len)
+{
+  if (state_ == kDisconnected)
+  {
+    LOG_WARN << "disconnected, give up writing";
+    return;
+  }
+  std::unique_ptr<TcpConnection::Context> datactx(new DataContext(data, len));
+  contextQueue_.emplace_back(std::move(datactx));
+  totalPendingBytes_ += len;
+  doWriting();
+}
+
+void TcpConnection::doWriting()
+{
+  assert(loop_->isInLoopThread());
+
+  while (!contextQueue_.empty())
+  {
+    auto &ctx = contextQueue_.front();
+    size_t n = ctx->writeToSocket(channel_->fd());
+    if (n >= 0)
+    {
+      totalPendingBytes_ -= n;
+      if (ctx->isComplete())
+      {
+        contextQueue_.pop_front();
+        if (contextQueue_.empty())
+        {
+          loop_->runInLoop(std::bind(&TcpConnection::writeCompleteCallback_, this));
+          if (channel_->isWriting())
+            channel_->disableWriting();
+        }
+      }
+    }
+    else
+    {
+      if (errno != EWOULDBLOCK && errno != EAGAIN)
+      {
+        contextQueue_.pop_front();
+        LOG_ERROR << "TcpConnection::sendInLoop write error";
+        handleClose();
+        return;
+      }
+      else // errno == EWOULDBLOCK
+      {
+        if (ctx->remaining() > 0)
+        {
+
+          if (totalPendingBytes_ > highWaterMark_ && !highWaterMarkTriggered_ && highWaterCallback_)
+          {
+            highWaterMarkTriggered_ = true;
+            loop_->runInLoop(std::bind(highWaterCallback_, shared_from_this(), totalPendingBytes_));
+          }
+
+          if (!channel_->isWriting())
+            channel_->enableWriting();
+        }
+        break;
+      }
+    }
+  }
+}
+
+void TcpConnection::handleWrite()
+{
+  // 用户是否注册可写事件
+  if (channel_->isWriting() && !contextQueue_.empty())
+  {
+    doWriting();
   }
 }

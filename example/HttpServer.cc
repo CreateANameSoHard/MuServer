@@ -6,6 +6,7 @@
 #include <iostream>
 #include <unordered_map>
 #include <string>
+#include <sys/stat.h>
 
 void onRequest(const HttpRequest &req, HttpResponse *resp)
 {
@@ -40,6 +41,18 @@ void hello(const HttpRequest& req, HttpResponse* resp)
     resp->setBody(content);
 }
 
+void apiTest(const HttpRequest& req, HttpResponse* resp)
+{
+    resp->setStatusCode(HttpResponse::HttpStateCode::k200Ok);
+    resp->setStatusMessage("OK");
+    resp->setContentType("text/plain");
+    resp->addHeader("Server", "TinyMuduo");
+
+    std::string content = "{ hello world! }";
+    resp->setBody(content);
+}
+
+
 int main()
 {
     InetAddress localaddr(8000); // 8000端口
@@ -48,6 +61,18 @@ int main()
     
     server.get("/", onRequest); 
     server.get("/hello", hello);
+    server.get("/api/test", apiTest);
+
+    struct stat buf1;
+    struct stat buf2;
+    stat("../resource/testHTML.html", &buf1);
+    stat("../resource/logo.png", &buf2);
+
+    StaticFile html("../resource/testHTML.html", 0, buf1.st_size);
+    StaticFile logo("../resource/logo.png", 0, buf2.st_size, StaticFile::FileType::kimage_png);
+
+    server.file("/testHTML", html);
+    server.file("/logo", logo);
 
     server.setThreadNum(0);
     server.start();

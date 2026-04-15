@@ -150,7 +150,7 @@ private:
     Method method_;
     std::string path_;
     Version version_;
-    std::string query_; // url的参数
+    std::string query_; // uri的参数
     TimeStamp receivedTime_; //这个参数是为了配合onMessage的timestamp参数
     std::unordered_map<std::string, std::string> headers_;
 };
