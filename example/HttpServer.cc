@@ -44,7 +44,8 @@ void login(const HttpRequest &req, HttpResponse *resp)
 
     try
     {
-        auto conn = MYSQLConnectionPool::getInstance().getConnection();
+        MySQLConnectionPool& pool = MySQLConnectionPool::getInstance();
+        auto conn = pool.getConnection();
 
         std::unique_ptr<sql::PreparedStatement> stmt(
             conn->prepareStatement(
@@ -95,11 +96,8 @@ int main()
     EventLoop loop;
     HttpServer server(&loop, localaddr, "dummy", TcpServer::kReusePort);
 
-    MYSQLConnectionPool::getInstance().init(
-        "tcp://127.0.0.1:3306",
-        "root",
-        "tanghao",
-        "MuServer");
+    MySQLConnectionPool& pool = MySQLConnectionPool::getInstance();
+    pool.init("tcp://127.0.0.1:3306", "root", "tanghao", "MuServer");
 
     struct stat buf1;
     struct stat buf2;

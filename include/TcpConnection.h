@@ -123,7 +123,7 @@ private:
     class Context
     {
     public:
-        virtual size_t writeToSocket(int) = 0;
+        virtual ssize_t writeToSocket(int) = 0;
         virtual ~Context() = default;
         virtual bool isComplete() const = 0;
         virtual size_t remaining() const = 0;
@@ -138,7 +138,7 @@ private:
         {
         }
 
-        size_t writeToSocket(int sockfd) override
+        ssize_t writeToSocket(int sockfd) override
         {
             ssize_t n = ::write(sockfd, data_.data() + pos_, data_.size() - pos_);
             if (n > 0)
@@ -196,7 +196,7 @@ private:
         {
             return len_ - (offset_ - initialOffset_);
         }
-        size_t writeToSocket(int sockfd) override
+        ssize_t writeToSocket(int sockfd) override
         {
             size_t remain = len_ - (offset_ - initialOffset_);
             ssize_t n = ::sendfile(sockfd, fd_, &offset_, remain);

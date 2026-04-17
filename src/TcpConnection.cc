@@ -232,7 +232,7 @@ void TcpConnection::doWriting()
   while (!contextQueue_.empty())
   {
     auto &ctx = contextQueue_.front();
-    size_t n = ctx->writeToSocket(channel_->fd());
+    ssize_t n = ctx->writeToSocket(channel_->fd());
     if (n >= 0)
     {
       totalPendingBytes_ -= n;
