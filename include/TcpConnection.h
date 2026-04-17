@@ -133,7 +133,7 @@ private:
     {
     public:
         DataContext(const void *data, size_t len)
-            : data_(static_cast<const char *>(data), static_cast<const char *>(data) + len),
+            : data_(static_cast<const char *>(data), static_cast<const char *>(data) + len), 
               pos_(0)
         {
         }

@@ -16,8 +16,10 @@ public:
         kUnknown = -1,
         k200Ok = 200,
         k301MovePermanently = 301,
+        k302Found = 302,
         k400BadRequest = 400,
-        k404NotFound = 404
+        k404NotFound = 404,
+        k500InternalServerError = 500
     };
     explicit HttpResponse(bool close)
         : stateCode_(HttpStateCode::kUnknown),

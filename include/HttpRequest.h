@@ -135,6 +135,9 @@ public:
         return ret;
     }
 
+    std::string body() const { return body_; }
+    void setBody(std::string& body) { body_ = body; }
+
     // 这里访问控制是没问题的 C++以类为单位控制访问 而不是对象
     void swap(HttpRequest &other)
     {
@@ -153,4 +156,6 @@ private:
     std::string query_; // uri的参数
     TimeStamp receivedTime_; //这个参数是为了配合onMessage的timestamp参数
     std::unordered_map<std::string, std::string> headers_;
+
+    std::string body_;
 };

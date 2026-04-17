@@ -219,7 +219,7 @@ void TcpConnection::sendInLoop(const void *data, size_t len)
     LOG_WARN << "disconnected, give up writing";
     return;
   }
-  std::unique_ptr<TcpConnection::Context> datactx(new DataContext(data, len));
+  std::unique_ptr<TcpConnection::Context> datactx(new DataContext(data, len)); //copy
   contextQueue_.emplace_back(std::move(datactx));
   totalPendingBytes_ += len;
   doWriting();

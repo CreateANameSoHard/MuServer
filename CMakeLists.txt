@@ -42,7 +42,7 @@ set(LIBS
 
 add_subdirectory(${HTTP})
 add_subdirectory(${LOGGER})
-# add_subdirectory(${POOL})
+add_subdirectory(${POOL})
 add_subdirectory(${SRC})
 add_subdirectory(${TIMER})
 

@@ -9,12 +9,6 @@ void HttpServer::start()
     server_.start();
 }
 
-// void DefaultCallback(const HttpRequest &req, HttpResponse *rep)
-// {
-//     rep->setStatusCode(HttpResponse::HttpStateCode::k404NotFound);
-//     rep->setStatusMessage("Not Found");
-//     rep->setCloseConnection(true);
-// }
 
 HttpServer::HttpServer(EventLoop *loop, const InetAddress &listenAddr, const std::string &nameArg, TcpServer::Option option)
     : server_(loop, listenAddr, nameArg, option),
@@ -60,6 +54,7 @@ void HttpServer::onRequest(const TcpConnectionPtr &conn, const HttpRequest &requ
 
     if (resp.isStaticFile())
     {
+        //TODO:对象池优化
         Buffer header;
         resp.appendHeaderToBuffer(&header);
         conn->send(&header);
@@ -67,6 +62,7 @@ void HttpServer::onRequest(const TcpConnectionPtr &conn, const HttpRequest &requ
     }
     else
     {
+        //TODO:对象池优化
         Buffer buffer;
         resp.appendToBuffer(&buffer);
         conn->send(&buffer);

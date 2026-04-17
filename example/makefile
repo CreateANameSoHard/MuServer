@@ -1,6 +1,6 @@
 CC=g++
 CFLAGS=-Wall -g
-PFLAGS=-I ../include -L ../lib/ -lhttp -llogger -lsrc -ltimer -lpthread
+PFLAGS=-I ../include -L ../lib/ -lhttp -llogger -lsrc -ltimer -lpool -lpthread -lmysqlcppconn
 .PHONY: clean all
 
 all:HttpServer EchoServer
