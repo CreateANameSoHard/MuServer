@@ -1,3 +1,5 @@
+#include <unistd.h>
+
 #include "../include/HttpServer.h"
 #include "../include/logger.h"
 #include "../include/HttpResponse.h"
@@ -9,10 +11,10 @@ void HttpServer::start()
     server_.start();
 }
 
-
 HttpServer::HttpServer(EventLoop *loop, const InetAddress &listenAddr, const std::string &nameArg, TcpServer::Option option)
     : server_(loop, listenAddr, nameArg, option),
-      router_()
+      router_(),
+      fileCache_(6, 3)
 {
     server_.setConnectionCallback(std::bind(&HttpServer::onConnection, this, std::placeholders::_1));
     server_.setMessageCallback(std::bind(&HttpServer::onMessage, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
@@ -49,20 +51,58 @@ void HttpServer::onRequest(const TcpConnectionPtr &conn, const HttpRequest &requ
     HttpResponse resp(close);
 
     LOG_INFO << "calling httpcallback ";
-    // callback_(request, &resp); // 用户提供的回调
+
     router_.handleRequest(request, &resp);
 
     if (resp.isStaticFile())
     {
-        //TODO:对象池优化
-        Buffer header;
-        resp.appendHeaderToBuffer(&header);
-        conn->send(&header);
-        conn->sendFile(*resp.getFileptr());
+        const StaticFile &sf = *resp.getFileptr();
+        std::string path = sf.path();
+        const size_t fileSize = sf.getFileSize();
+        //small file
+        if (fileSize <= MAX_CHACHE_FILE_SIZE)
+        {
+            auto content = fileCache_.get(path);
+            // hit
+            if (content)
+            {
+                Buffer buffer;
+                resp.setBody(std::string(content->data(), content->size()));
+                resp.appendToBuffer(&buffer);
+                conn->send(&buffer);
+            }
+            // not hit
+            else
+            {
+                LOG_INFO << "not hit, reload cache ";
+                Buffer header;
+                resp.appendHeaderToBuffer(&header);
+                conn->send(&header);
+                conn->sendFile(*resp.getFileptr());
+
+                // TODO:改为线程池写入
+                std::vector<char> data(fileSize);
+                int fd = ::open(path.c_str(), O_RDONLY);
+                if (fd >= 0)
+                {
+                    ::read(fd, data.data(), fileSize);
+                    ::close(fd);
+                    fileCache_.put(path, std::make_shared<std::vector<char>>(std::move(data)));
+                }
+            }
+        }
+        //big file
+        else
+        {
+            Buffer header;
+            resp.appendHeaderToBuffer(&header);
+            conn->send(&header);
+            conn->sendFile(*resp.getFileptr());
+        }
     }
     else
     {
-        //TODO:对象池优化
+        // TODO:对象池优化
         Buffer buffer;
         resp.appendToBuffer(&buffer);
         conn->send(&buffer);

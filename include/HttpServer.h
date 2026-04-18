@@ -6,6 +6,7 @@
 #include "TcpConnection.h"
 #include "noncopyable.h"
 #include "Router.h"
+#include "LFU.h"
 
 class HttpRequest;
 class HttpResponse;
@@ -27,6 +28,8 @@ public:
 
     void setThreadNum(int numThreads) { server_.setThreadNum(numThreads); };
 
+    static const size_t MAX_CHACHE_FILE_SIZE = 1024 * 1024; //1MB
+
 private:
     void onConnection(TcpConnectionPtr);
     void onMessage(TcpConnectionPtr, Buffer *, TimeStamp);
@@ -35,4 +38,5 @@ private:
     TcpServer server_;
     // HttpCallback callback_; //用户提供的httpcallback
     Router router_;
+    HashLFUCache<std::string, std::shared_ptr<std::vector<char>>> fileCache_;
 };
